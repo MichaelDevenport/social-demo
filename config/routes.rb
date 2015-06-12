@@ -65,7 +65,7 @@ SocialDemo::Application.routes.draw do
   #     # (app/controllers/admin/products_controller.rb)
   #     resources :products
   #   end
- delete  'likes/:resource_name/:resource_id' => "likes#destroy", :as => 'like'
+ delete  'likes/:resource_name/:resource_id' => "likes#destroy", :as => 'unlike'
  post    'likes/:resource_name/:resource_id' => "likes#create",  :as => 'like'
   # You can have the root of your site routed with "root"
   # just remember to delete public/index.html.

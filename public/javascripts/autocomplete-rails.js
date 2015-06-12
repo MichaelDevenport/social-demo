@@ -13,4 +13,167 @@
 *   Example:
 *       <input type="text" data-autocomplete="/url/to/autocomplete" data-id-element="#id_field">
 */
-(function(a){var b=null;a.fn.railsAutocomplete=function(){return this.live("focus",function(){this.railsAutoCompleter||(this.railsAutoCompleter=new a.railsAutocomplete(this))})},a.railsAutocomplete=function(a){_e=a,this.init(_e)},a.railsAutocomplete.fn=a.railsAutocomplete.prototype={railsAutocomplete:"0.0.1"},a.railsAutocomplete.fn.extend=a.railsAutocomplete.extend=a.extend,a.railsAutocomplete.fn.extend({init:function(b){function c(a){return a.split(b.delimiter)}function d(a){return c(a).pop().replace(/^\s+/,"")}b.delimiter=a(b).attr("data-delimiter")||null,a(b).autocomplete({source:function(c,f){a.getJSON(a(b).attr("data-autocomplete"),{term:d(c.term)},function(){a(arguments[0]).each(function(c,d){var f={};f[d.id]=d,a(b).data(f)}),f.apply(null,arguments)})},search:function(){var a=d(this.value);if(a.length<2)return!1},focus:function(){return!1},select:function(d,f){var g=c(this.value);g.pop(),g.push(f.item.value);if(b.delimiter!=null)g.push(""),this.value=g.join(b.delimiter);else{this.value=g.join(""),a(this).attr("data-id-element")&&a(a(this).attr("data-id-element")).val(f.item.id);if(a(this).attr("data-update-elements")){var h=a(this).data(f.item.id.toString()),i=a.parseJSON(a(this).attr("data-update-elements"));for(var j in i)a(i[j]).val(h[j])}}var k=this.value;return a(this).bind("keyup.clearId",function(){a(this).val().trim()!=k.trim()&&(a(a(this).attr("data-id-element")).val(""),a(this).unbind("keyup.clearId"))}),a(this).trigger("railsAutocomplete.select",f),!1}})}}),a(document).ready(function(){a("input[data-autocomplete]").railsAutocomplete()})})(jQuery);
+
+(function(jQuery)
+{
+  var self = null;
+  jQuery.fn.railsAutocomplete = function() {
+    var handler = function() {
+      if (!this.railsAutoCompleter) {
+        this.railsAutoCompleter = new jQuery.railsAutocomplete(this);
+      }
+    };
+    if (jQuery.fn.on !== undefined) {
+      return jQuery(document).on('focus',this.selector,handler);
+    }
+    else {
+      return this.live('focus',handler);
+    }
+  };
+
+  jQuery.railsAutocomplete = function (e) {
+    var _e = e;
+    this.init(_e);
+  };
+
+  jQuery.railsAutocomplete.fn = jQuery.railsAutocomplete.prototype = {
+    railsAutocomplete: '0.0.1'
+  };
+
+  jQuery.railsAutocomplete.fn.extend = jQuery.railsAutocomplete.extend = jQuery.extend;
+  jQuery.railsAutocomplete.fn.extend({
+    init: function(e) {
+      e.delimiter = jQuery(e).attr('data-delimiter') || null;
+      e.min_length = jQuery(e).attr('min-length') || 2;
+      e.append_to = jQuery(e).attr('data-append-to') || null;
+      e.autoFocus = jQuery(e).attr('data-auto-focus') || false;
+      function split( val ) {
+        return val.split( e.delimiter );
+      }
+      function extractLast( term ) {
+        return split( term ).pop().replace(/^\s+/,"");
+      }
+
+      jQuery(e).autocomplete({
+        appendTo: e.append_to,
+        autoFocus: e.autoFocus,
+        delay: jQuery(e).attr('delay') || 0,
+        source: function( request, response ) {
+          var firedFrom = this.element[0];
+          var params = {term: extractLast( request.term )};
+          if (jQuery(e).attr('data-autocomplete-fields')) {
+              jQuery.each(jQuery.parseJSON(jQuery(e).attr('data-autocomplete-fields')), function(field, selector) {
+              params[field] = jQuery(selector).val();
+            });
+          }
+          jQuery.getJSON( jQuery(e).attr('data-autocomplete'), params, function() {
+            if(arguments[0].length === 0) {
+              arguments[0] = [];
+              arguments[0][0] = { id: "", label: "no existing match" };
+            }
+            jQuery(arguments[0]).each(function(i, el) {
+              var obj = {};
+              obj[el.id] = el;
+              jQuery(e).data(obj);
+            });
+            response.apply(null, arguments);
+            jQuery(firedFrom).trigger('railsAutocomplete.source', arguments);
+          });
+        },
+        change: function( event, ui ) {
+            if(!jQuery(this).is('[data-id-element]') ||
+                    jQuery(jQuery(this).attr('data-id-element')).val() === "") {
+                    return;
+            }
+            jQuery(jQuery(this).attr('data-id-element')).val(ui.item ? ui.item.id : "");
+
+            if (jQuery(this).attr('data-update-elements')) {
+                var update_elements = jQuery.parseJSON(jQuery(this).attr("data-update-elements"));
+                var data = ui.item ? jQuery(this).data(ui.item.id.toString()) : {};
+                if(update_elements && jQuery(update_elements['id']).val() === "") {
+                  return;
+                }
+                for (var key in update_elements) {
+                    var element = jQuery(update_elements[key]);
+                    if (element.is(':checkbox')) {
+                        if (data[key] != null) {
+                            element.prop('checked', data[key]);
+                        }
+                    } else {
+                        element.val(ui.item ? data[key] : "");
+                    }
+                }
+            }
+        },
+        search: function() {
+          // custom minLength
+          var term = extractLast( this.value );
+          if ( term.length < e.min_length ) {
+            return false;
+          }
+        },
+        focus: function() {
+          // prevent value inserted on focus
+          return false;
+        },
+        select: function( event, ui ) {
+          if(ui.item.value.toLowerCase().indexOf('no match') != -1 || ui.item.value.toLowerCase().indexOf('too many results') != -1){
+            jQuery(this).trigger('railsAutocomplete.noMatch', ui);
+            return false;
+          }
+          var terms = split( this.value );
+          // remove the current input
+          terms.pop();
+          // add the selected item
+          terms.push( ui.item.value );
+          // add placeholder to get the comma-and-space at the end
+          if (e.delimiter != null) {
+            terms.push( "" );
+            this.value = terms.join( e.delimiter );
+          } else {
+            this.value = terms.join("");
+            if (jQuery(this).attr('data-id-element')) {
+              jQuery(jQuery(this).attr('data-id-element')).val(ui.item.id);
+            }
+            if (jQuery(this).attr('data-update-elements')) {
+              var data = ui.item;
+              var new_record = ui.item.value.indexOf('Create New') != -1 ? true : false;
+              var update_elements = jQuery.parseJSON(jQuery(this).attr("data-update-elements"));
+              for (var key in update_elements) {
+                if(jQuery(update_elements[key]).attr("type") === "checkbox"){
+                   if(data[key] === true || data[key] === 1) {
+                       jQuery(update_elements[key]).attr("checked","checked");
+                   }
+                   else {
+                       jQuery(update_elements[key]).removeAttr("checked");
+                   }
+                }
+                else{
+                  if((new_record && data[key] && data[key].indexOf('Create New') == -1) || !new_record){
+                    jQuery(update_elements[key]).val(data[key]);
+                  }else{
+                    jQuery(update_elements[key]).val('');
+                  }
+                }
+               }
+            }
+          }
+          var remember_string = this.value;
+          jQuery(this).bind('keyup.clearId', function(){
+            if(jQuery.trim(jQuery(this).val()) != jQuery.trim(remember_string)){
+              jQuery(jQuery(this).attr('data-id-element')).val("");
+              jQuery(this).unbind('keyup.clearId');
+            }
+          });
+          jQuery(e).trigger('railsAutocomplete.select', ui);
+
+          return false;
+        }
+      });
+    }
+  });
+
+  jQuery(document).ready(function(){
+    jQuery('input[data-autocomplete]').railsAutocomplete();
+  });
+})(jQuery);

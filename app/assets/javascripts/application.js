@@ -12,13 +12,13 @@
 //
 //= require jquery
 //= require jquery_ujs
-//= require jquery.ui.core
-//= require jquery.Jcrop
-//= require twitter/bootstrap
+//= require jquery-ui
 //= require autocomplete-rails
+//= require bootstrap
 //= require rails.validations
 //= require jquery.tokeninput
 //= require jquery.remotipart
+//= require jquery.turbolinks
 //= require turbolinks
 //= require_tree .
 // Search form.  
